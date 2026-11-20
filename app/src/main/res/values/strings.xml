@@ -1,0 +1,7 @@
+<resources>
+    <string name="app_name">Nexus Control Pro</string>
+    <string name="default_web_client_id">mock_web_client_id_nexus_control_pro</string>
+    <string name="firestore_database_id">(default)</string>
+    <string name="widget_priority_devices_label">Nexus Priority Fleet</string>
+    <string name="widget_priority_devices_description">Displays connection status, battery level, and last known location of selected high-priority managed devices.</string>
+</resources>

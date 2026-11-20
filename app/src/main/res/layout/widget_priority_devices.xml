@@ -1,0 +1,277 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/widget_root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@drawable/widget_bg_rounded"
+    android:orientation="vertical"
+    android:padding="14dp">
+
+    <!-- Header -->
+    <LinearLayout
+        android:id="@+id/widget_header_container"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:paddingBottom="10dp">
+
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:orientation="vertical">
+
+            <TextView
+                android:id="@+id/widget_title"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="NEXUS PRIORITY FLEET"
+                android:textColor="#F0F4F8"
+                android:textSize="13sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/widget_subtitle"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="3 Priority • Synced just now"
+                android:textColor="#8C9BAE"
+                android:textSize="11sp" />
+        </LinearLayout>
+
+        <TextView
+            android:id="@+id/widget_refresh_btn"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:background="@drawable/widget_row_bg"
+            android:paddingStart="10dp"
+            android:paddingTop="6dp"
+            android:paddingEnd="10dp"
+            android:paddingBottom="6dp"
+            android:text="↻ Sync"
+            android:textColor="#38BDF8"
+            android:textSize="11sp"
+            android:textStyle="bold" />
+    </LinearLayout>
+
+    <!-- Empty State -->
+    <TextView
+        android:id="@+id/widget_empty_state"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="@drawable/widget_row_bg"
+        android:gravity="center"
+        android:padding="14dp"
+        android:text="Star high-priority managed devices in Nexus Control Pro to monitor them here."
+        android:textColor="#8C9BAE"
+        android:textSize="12sp"
+        android:visibility="gone" />
+
+    <!-- Priority Device Slot 1 -->
+    <LinearLayout
+        android:id="@+id/widget_device_slot_1"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="6dp"
+        android:background="@drawable/widget_row_bg"
+        android:orientation="vertical"
+        android:padding="10dp">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+
+            <ImageView
+                android:id="@+id/slot1_status_dot"
+                android:layout_width="8dp"
+                android:layout_height="8dp"
+                android:contentDescription="Connection status"
+                android:src="@drawable/widget_status_online" />
+
+            <TextView
+                android:id="@+id/slot1_name"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="6dp"
+                android:layout_weight="1"
+                android:ellipsize="end"
+                android:maxLines="1"
+                android:text="Field Phone A"
+                android:textColor="#F0F4F8"
+                android:textSize="12sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/slot1_battery"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="87% ⚡"
+                android:textColor="#22C55E"
+                android:textSize="11sp"
+                android:textStyle="bold" />
+        </LinearLayout>
+
+        <TextView
+            android:id="@+id/slot1_status"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="2dp"
+            android:ellipsize="end"
+            android:maxLines="1"
+            android:text="Online (5G)"
+            android:textColor="#38BDF8"
+            android:textSize="10sp" />
+
+        <TextView
+            android:id="@+id/slot1_location"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="2dp"
+            android:ellipsize="end"
+            android:maxLines="1"
+            android:text="📍 Koramangala Tech Park, Bengaluru"
+            android:textColor="#CBD5E1"
+            android:textSize="10sp" />
+    </LinearLayout>
+
+    <!-- Priority Device Slot 2 -->
+    <LinearLayout
+        android:id="@+id/widget_device_slot_2"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="6dp"
+        android:background="@drawable/widget_row_bg"
+        android:orientation="vertical"
+        android:padding="10dp">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+
+            <ImageView
+                android:id="@+id/slot2_status_dot"
+                android:layout_width="8dp"
+                android:layout_height="8dp"
+                android:contentDescription="Connection status"
+                android:src="@drawable/widget_status_online" />
+
+            <TextView
+                android:id="@+id/slot2_name"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="6dp"
+                android:layout_weight="1"
+                android:ellipsize="end"
+                android:maxLines="1"
+                android:text="Warehouse Tablet B2"
+                android:textColor="#F0F4F8"
+                android:textSize="12sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/slot2_battery"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="64%"
+                android:textColor="#22C55E"
+                android:textSize="11sp"
+                android:textStyle="bold" />
+        </LinearLayout>
+
+        <TextView
+            android:id="@+id/slot2_status"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="2dp"
+            android:ellipsize="end"
+            android:maxLines="1"
+            android:text="Online (Wi-Fi)"
+            android:textColor="#38BDF8"
+            android:textSize="10sp" />
+
+        <TextView
+            android:id="@+id/slot2_location"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="2dp"
+            android:ellipsize="end"
+            android:maxLines="1"
+            android:text="📍 Whitefield Logistics Hub, Sector 4"
+            android:textColor="#CBD5E1"
+            android:textSize="10sp" />
+    </LinearLayout>
+
+    <!-- Priority Device Slot 3 -->
+    <LinearLayout
+        android:id="@+id/widget_device_slot_3"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="@drawable/widget_row_bg"
+        android:orientation="vertical"
+        android:padding="10dp">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+
+            <ImageView
+                android:id="@+id/slot3_status_dot"
+                android:layout_width="8dp"
+                android:layout_height="8dp"
+                android:contentDescription="Connection status"
+                android:src="@drawable/widget_status_offline" />
+
+            <TextView
+                android:id="@+id/slot3_name"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="6dp"
+                android:layout_weight="1"
+                android:ellipsize="end"
+                android:maxLines="1"
+                android:text="Dispatch Pixel C3"
+                android:textColor="#F0F4F8"
+                android:textSize="12sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/slot3_battery"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="23%"
+                android:textColor="#F59E0B"
+                android:textSize="11sp"
+                android:textStyle="bold" />
+        </LinearLayout>
+
+        <TextView
+            android:id="@+id/slot3_status"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="2dp"
+            android:ellipsize="end"
+            android:maxLines="1"
+            android:text="Offline • LOCKED"
+            android:textColor="#F87171"
+            android:textSize="10sp" />
+
+        <TextView
+            android:id="@+id/slot3_location"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="2dp"
+            android:ellipsize="end"
+            android:maxLines="1"
+            android:text="📍 MG Road Depot • 14m ago"
+            android:textColor="#CBD5E1"
+            android:textSize="10sp" />
+    </LinearLayout>
+
+</LinearLayout>
