@@ -244,6 +244,35 @@ class ManagedDevicesViewModel(application: Application) : AndroidViewModel(appli
         _statusBanner.value = null
     }
 
+    fun removeDevice(deviceId: String) {
+        val target = _managedDevices.value.firstOrNull { it.deviceId == deviceId }
+        val updated = _managedDevices.value.filter { it.deviceId != deviceId }
+        _managedDevices.value = updated
+        _selectedDeviceIds.value = _selectedDeviceIds.value.filter { it != deviceId }.toSet()
+        PriorityWidgetStore.savePriorityDevices(appContext, updated)
+
+        val name = target?.deviceName ?: "Device"
+        _statusBanner.value = "Removed $name from managed fleet."
+        com.example.data.LiveAlertManager.postAlert(
+            title = "Device Removed",
+            message = "$name ($deviceId) was unlinked from Admin Console.",
+            type = com.example.data.LiveAlertType.INFO
+        )
+    }
+
+    fun addOrUpdateDevice(device: NexusDevice) {
+        val current = _managedDevices.value.toMutableList()
+        val index = current.indexOfFirst { it.deviceId == device.deviceId }
+        if (index >= 0) {
+            current[index] = device
+        } else {
+            current.add(0, device)
+        }
+        _managedDevices.value = current
+        PriorityWidgetStore.savePriorityDevices(appContext, current)
+        _statusBanner.value = "Added ${device.deviceName} to managed fleet"
+    }
+
     private fun createInitialFleet(): List<NexusDevice> {
         val now = System.currentTimeMillis()
         return listOf(

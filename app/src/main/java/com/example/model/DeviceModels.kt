@@ -54,7 +54,9 @@ data class NexusDevice(
     val isHighPriority: Boolean = false,
     val isLocked: Boolean = false,
     val kioskModeActive: Boolean = false,
-    val kioskSingleAppPackage: String? = null
+    val kioskSingleAppPackage: String? = null,
+    val ipAddress: String? = null,
+    val p2pPort: Int = 8899
 )
 
 data class SensitivePermissionState(
@@ -93,7 +95,9 @@ data class DevicePairing(
     val createdAt: Long = System.currentTimeMillis(),
     val expiresAt: Long = System.currentTimeMillis() + (10 * 60 * 1000), // 10 minutes
     val managedDeviceName: String = "",
-    val adminDeviceName: String = ""
+    val adminDeviceName: String = "",
+    val managedIp: String? = null,
+    val managedPort: Int = 8899
 )
 
 data class SignalingSession(

@@ -187,6 +187,22 @@ class DashboardViewModel(application: Application) : AndroidViewModel(applicatio
     fun refreshTelemetry(deviceId: String, deviceName: String, role: String) {
         viewModelScope.launch {
             _isRefreshing.value = true
+            val remoteIp = _managedDeviceState.value?.ipAddress
+            if (!remoteIp.isNullOrBlank()) {
+                val p2p = com.example.data.NexusP2PManager.getInstance(getApplication())
+                val result = p2p.fetchRemoteTelemetry(remoteIp)
+                if (result.isSuccess) {
+                    _managedDeviceState.value = result.getOrThrow()
+                    com.example.data.LiveAlertManager.postAlert(
+                        title = "Telemetry Synchronized",
+                        message = "Live data synced directly from ${_managedDeviceState.value?.deviceName ?: "managed device"}",
+                        type = com.example.data.LiveAlertType.SUCCESS
+                    )
+                    _isRefreshing.value = false
+                    return@launch
+                }
+            }
+
             val updated = localDeviceManager.getLocalDeviceTelemetry(deviceId, deviceName, role)
             _managedDeviceState.value = updated
             firestoreRepository.updateDeviceTelemetry(updated)

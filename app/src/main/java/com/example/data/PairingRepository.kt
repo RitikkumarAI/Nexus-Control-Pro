@@ -17,9 +17,16 @@ class PairingRepository(
     suspend fun generateSecurePairingCode(managedDeviceId: String, managedDeviceName: String): DevicePairing {
         val codeInt = 100000 + secureRandom.nextInt(900000)
         val codeStr = codeInt.toString()
+        val p2p = NexusP2PManager.getInstance(context)
+        val localIp = p2p.getLocalIpAddress()
+        p2p.startManagedServer(NexusP2PManager.DEFAULT_PORT)
 
-        val pairing = firestoreRepository.generatePairingCode(managedDeviceId, managedDeviceName)
-        return pairing.copy(pairingCode = codeStr)
+        return firestoreRepository.generatePairingCode(
+            managedDeviceId = managedDeviceId,
+            managedDeviceName = managedDeviceName,
+            codeOverride = codeStr,
+            ipAddress = localIp
+        )
     }
 
     suspend fun submitPairingCodeFromAdmin(adminDeviceId: String, adminDeviceName: String, code: String): DevicePairing? {

@@ -164,8 +164,13 @@ class FirestoreRepository(private val context: Context) {
     }
 
     // --- DEVICE PAIRING API ---
-    suspend fun generatePairingCode(managedDeviceId: String, managedDeviceName: String): DevicePairing {
-        val code = (100000..999999).random().toString()
+    suspend fun generatePairingCode(
+        managedDeviceId: String,
+        managedDeviceName: String,
+        codeOverride: String? = null,
+        ipAddress: String? = null
+    ): DevicePairing {
+        val code = codeOverride ?: (100000..999999).random().toString()
         val pairingId = "pair_${UUID.randomUUID().toString().take(8)}"
         val pairing = DevicePairing(
             pairingId = pairingId,
@@ -174,7 +179,9 @@ class FirestoreRepository(private val context: Context) {
             pairingCode = code,
             status = PairingStatus.GENERATED.name,
             createdAt = System.currentTimeMillis(),
-            expiresAt = System.currentTimeMillis() + (10 * 60 * 1000)
+            expiresAt = System.currentTimeMillis() + (10 * 60 * 1000),
+            managedIp = ipAddress,
+            managedPort = 8899
         )
 
         localPairingState.value = pairing

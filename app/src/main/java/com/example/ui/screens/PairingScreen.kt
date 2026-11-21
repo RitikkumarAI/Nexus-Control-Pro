@@ -15,10 +15,12 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.CameraAlt
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.CircularProgressIndicator
@@ -67,9 +69,11 @@ fun PairingScreen(
     onSubmitCode: () -> Unit,
     onConfirmPairing: (Boolean) -> Unit,
     onBack: () -> Unit,
-    onNavigateToDashboard: () -> Unit
+    onNavigateToDashboard: () -> Unit,
+    onScanQrCode: (String) -> Unit = {}
 ) {
     var activeTab by remember { mutableStateOf("QR") }
+    var showQrScanner by remember { mutableStateOf(false) }
 
     LaunchedEffect(pairingState?.status) {
         if (pairingState?.status == PairingStatus.PAIRED.name) {
@@ -150,16 +154,96 @@ fun PairingScreen(
             val currentCode = pairingState?.pairingCode ?: "749268"
 
             if (activeTab == "QR") {
-                QRCodeView(qrCodeContent = "NEXUS_PAIR:$currentCode:${pairingState?.managedDeviceId ?: currentDeviceId}")
+                if (userRole == UserRole.ADMIN) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth(0.9f)
+                            .clip(RoundedCornerShape(20.dp))
+                            .background(MaterialTheme.colorScheme.surface)
+                            .border(1.5.dp, MaterialTheme.colorScheme.primary, RoundedCornerShape(20.dp))
+                            .padding(24.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Box(
+                                modifier = Modifier
+                                    .size(72.dp)
+                                    .clip(CircleShape)
+                                    .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.CameraAlt,
+                                    contentDescription = "Camera Scanner",
+                                    tint = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.size(36.dp)
+                                )
+                            }
 
-                Spacer(modifier = Modifier.height(16.dp))
+                            Spacer(modifier = Modifier.height(16.dp))
 
-                Text(
-                    text = "Scan this QR with Admin Device",
-                    fontSize = 13.sp,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    textAlign = TextAlign.Center
-                )
+                            Text(
+                                text = "Camera QR Scanner",
+                                fontSize = 17.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+
+                            Spacer(modifier = Modifier.height(6.dp))
+
+                            Text(
+                                text = "Point this Admin phone's camera at the QR code displayed on the Managed Phone (Phone A).",
+                                fontSize = 13.sp,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                textAlign = TextAlign.Center
+                            )
+
+                            Spacer(modifier = Modifier.height(20.dp))
+
+                            PrimaryNexusButton(
+                                text = "Open Camera Scanner",
+                                onClick = { showQrScanner = true },
+                                icon = Icons.Default.CameraAlt
+                            )
+                        }
+                    }
+                } else {
+                    val context = androidx.compose.ui.platform.LocalContext.current
+                    val p2p = remember { com.example.data.NexusP2PManager.getInstance(context) }
+                    val localIp = remember { p2p.getLocalIpAddress() }
+
+                    val qrJson = remember(currentCode, localIp) {
+                        org.json.JSONObject().apply {
+                            put("protocol", "NEXUS_MDM_V1")
+                            put("deviceId", currentDeviceId)
+                            put("deviceName", currentDeviceName)
+                            put("ip", localIp)
+                            put("port", com.example.data.NexusP2PManager.DEFAULT_PORT)
+                            put("code", currentCode)
+                        }.toString()
+                    }
+
+                    QRCodeView(qrCodeContent = qrJson)
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    Text(
+                        text = "Scan this QR with Admin Device (+ icon or Camera)",
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        textAlign = TextAlign.Center
+                    )
+
+                    Spacer(modifier = Modifier.height(6.dp))
+
+                    Text(
+                        text = "Local IP: $localIp:8899",
+                        fontSize = 12.sp,
+                        color = MaterialTheme.colorScheme.primary,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
             } else {
                 Text(
                     text = "Enter 6-Digit Pairing Code",
@@ -301,5 +385,15 @@ fun PairingScreen(
                 }
             }
         }
+    }
+
+    if (showQrScanner) {
+        com.example.ui.components.QRScannerDialog(
+            onDismiss = { showQrScanner = false },
+            onQrScanned = { scannedCode ->
+                showQrScanner = false
+                onScanQrCode(scannedCode)
+            }
+        )
     }
 }

@@ -145,7 +145,8 @@ fun AdminDashboardScreen(
     onAcknowledgeFleetBroadcast: (String) -> Unit = {},
     storageReport: StorageOptimizationReport = StorageOptimizationReport(),
     isOptimizingStorage: Boolean = false,
-    onTriggerStorageCleanup: () -> Unit = {}
+    onTriggerStorageCleanup: () -> Unit = {},
+    onScanQrPair: (String) -> Unit = {}
 ) {
     val device = managedDevice ?: NexusDevice(
         deviceName = "Field Phone A",
@@ -159,6 +160,8 @@ fun AdminDashboardScreen(
 
     val themeController = LocalThemeController.current
     var currentBottomTab by remember { mutableStateOf("Home") }
+    var showAddDeviceModal by remember { mutableStateOf(false) }
+    var showQrScanner by remember { mutableStateOf(false) }
 
     Scaffold(
         bottomBar = {
@@ -191,7 +194,7 @@ fun AdminDashboardScreen(
 
                 NavigationBarItem(
                     selected = false,
-                    onClick = { onNavigateToPairing() },
+                    onClick = { showAddDeviceModal = true },
                     icon = {
                         Box(
                             modifier = Modifier
@@ -620,6 +623,70 @@ fun AdminDashboardScreen(
                 Spacer(modifier = Modifier.height(24.dp))
             }
         }
+    }
+
+    if (showAddDeviceModal) {
+        androidx.compose.material3.AlertDialog(
+            onDismissRequest = { showAddDeviceModal = false },
+            title = {
+                Text(
+                    text = "Add Managed Device",
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 18.sp
+                )
+            },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Text(
+                        text = "Connect and pair with the target managed Android device:",
+                        fontSize = 13.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+
+                    androidx.compose.material3.Button(
+                        onClick = {
+                            showAddDeviceModal = false
+                            showQrScanner = true
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        Icon(Icons.Default.CameraAlt, contentDescription = null)
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("Scan QR Code (Camera)")
+                    }
+
+                    androidx.compose.material3.OutlinedButton(
+                        onClick = {
+                            showAddDeviceModal = false
+                            onNavigateToPairing()
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        Icon(Icons.Default.PhoneAndroid, contentDescription = null)
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("Enter 6-Digit PIN Code")
+                    }
+                }
+            },
+            confirmButton = {},
+            dismissButton = {
+                androidx.compose.material3.TextButton(onClick = { showAddDeviceModal = false }) {
+                    Text("Cancel")
+                }
+            }
+        )
+    }
+
+    if (showQrScanner) {
+        com.example.ui.components.QRScannerDialog(
+            onDismiss = { showQrScanner = false },
+            onQrScanned = { scannedCode ->
+                showQrScanner = false
+                onScanQrPair(scannedCode)
+            }
+        )
     }
 }
 

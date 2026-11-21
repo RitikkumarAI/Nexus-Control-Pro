@@ -9,6 +9,7 @@ import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import com.example.model.NexusDevice
 import com.example.model.UserRole
 import com.example.ui.screens.AdminDashboardScreen
 import com.example.ui.screens.AppManagerScreen
@@ -146,6 +147,19 @@ fun NexusNavGraph(
                 },
                 onConfirmPairing = pairingViewModel::confirmPairingOnManaged,
                 onBack = { navController.popBackStack() },
+                onScanQrCode = { qrData ->
+                    pairingViewModel.pairFromScannedQr(
+                        qrData = qrData,
+                        adminDeviceId = currentDeviceId,
+                        adminDeviceName = currentDeviceName
+                    ) { newDev ->
+                        managedDevicesViewModel.addOrUpdateDevice(newDev)
+                        dashboardViewModel.observeRemoteDevice(newDev.deviceId)
+                        navController.navigate(Screen.AdminDashboard.route) {
+                            popUpTo(Screen.Pairing.route) { inclusive = true }
+                        }
+                    }
+                },
                 onNavigateToDashboard = {
                     if (role == UserRole.ADMIN) {
                         navController.navigate(Screen.AdminDashboard.route) {
@@ -241,6 +255,16 @@ fun NexusNavGraph(
                 isOptimizingStorage = isOptimizingStorage,
                 onTriggerStorageCleanup = {
                     dashboardViewModel.triggerStorageCleanup(managedDevice?.deviceId ?: "phone_a")
+                },
+                onScanQrPair = { qrData ->
+                    pairingViewModel.pairFromScannedQr(
+                        qrData = qrData,
+                        adminDeviceId = currentDeviceId,
+                        adminDeviceName = currentDeviceName
+                    ) { newDev ->
+                        managedDevicesViewModel.addOrUpdateDevice(newDev)
+                        dashboardViewModel.observeRemoteDevice(newDev.deviceId)
+                    }
                 }
             )
         }
@@ -281,6 +305,7 @@ fun NexusNavGraph(
                 isSharingActive = isSharingActive,
                 streamResolution = resolution,
                 connectionLatencyMs = latency,
+                isAdmin = role == UserRole.ADMIN,
                 focusModeActive = focusModeActive,
                 ringerVolume = ringerVolume,
                 mediaVolume = mediaVolume,
@@ -292,9 +317,22 @@ fun NexusNavGraph(
                     screenShareViewModel.setRemoteVolume(pairedDeviceId ?: "phone_b", ring, media, alarm)
                 },
                 onStartStream = {
-                    screenShareViewModel.startScreenShareSession(currentDeviceId, pairedDeviceId ?: "admin_device")
+                    if (role == UserRole.ADMIN) {
+                        screenShareViewModel.requestRemoteScreenStream(
+                            targetDeviceId = pairedDeviceId ?: "phone_a",
+                            targetIp = managedDevice?.ipAddress
+                        )
+                    } else {
+                        screenShareViewModel.startManagedScreenCapture(pairedDeviceId ?: "admin_device")
+                    }
                 },
-                onStopStream = screenShareViewModel::stopScreenShareSession,
+                onStopStream = {
+                    if (role == UserRole.ADMIN) {
+                        screenShareViewModel.stopRemoteViewing(pairedDeviceId ?: "phone_a")
+                    } else {
+                        screenShareViewModel.stopManagedScreenCapture()
+                    }
+                },
                 onBack = { navController.popBackStack() }
             )
         }
@@ -303,6 +341,10 @@ fun NexusNavGraph(
             val query by appManagerViewModel.searchQuery.collectAsState()
             val isLoading by appManagerViewModel.isLoading.collectAsState()
             val hasUsageAccess by appManagerViewModel.hasUsageAccess.collectAsState()
+
+            LaunchedEffect(managedDevice?.ipAddress) {
+                appManagerViewModel.loadApplications(managedDevice?.ipAddress)
+            }
 
             AppManagerScreen(
                 appList = appManagerViewModel.getFilteredApps(),
@@ -356,11 +398,15 @@ fun NexusNavGraph(
             val trackingActive by locationViewModel.isContinuousTrackingActive.collectAsState()
             val isLoading by locationViewModel.isLoading.collectAsState()
 
+            LaunchedEffect(managedDevice?.ipAddress) {
+                locationViewModel.refreshLocation(managedDevice?.ipAddress)
+            }
+
             LocationScreen(
                 locationState = locationState,
                 isContinuousTrackingActive = trackingActive,
                 isLoading = isLoading,
-                onRefreshLocation = locationViewModel::refreshLocation,
+                onRefreshLocation = { locationViewModel.refreshLocation(managedDevice?.ipAddress) },
                 onToggleTracking = locationViewModel::toggleContinuousTracking,
                 onBack = { navController.popBackStack() }
             )
@@ -430,7 +476,17 @@ fun NexusNavGraph(
             ManagedDevicesScreen(
                 viewModel = managedDevicesViewModel,
                 onBack = { navController.popBackStack() },
-                onNavigateToPairing = { navController.navigate(Screen.Pairing.route) }
+                onNavigateToPairing = { navController.navigate(Screen.Pairing.route) },
+                onScanQrPair = { qrData ->
+                    pairingViewModel.pairFromScannedQr(
+                        qrData = qrData,
+                        adminDeviceId = currentDeviceId,
+                        adminDeviceName = currentDeviceName
+                    ) { newDev ->
+                        managedDevicesViewModel.addOrUpdateDevice(newDev)
+                        dashboardViewModel.observeRemoteDevice(newDev.deviceId)
+                    }
+                }
             )
         }
 

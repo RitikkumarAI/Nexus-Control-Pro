@@ -28,7 +28,41 @@ class ScreenShareViewModel(application: Application) : AndroidViewModel(applicat
     private val _connectionLatencyMs = MutableStateFlow(24)
     val connectionLatencyMs: StateFlow<Int> = _connectionLatencyMs.asStateFlow()
 
-    fun startScreenShareSession(managedDeviceId: String, adminDeviceId: String) {
+    fun requestRemoteScreenStream(targetDeviceId: String, targetIp: String? = null) {
+        // Admin requests Managed Device to stream its screen. Admin does NOT capture own screen.
+        _isSharingActive.value = true
+        viewModelScope.launch {
+            if (!targetIp.isNullOrBlank()) {
+                val p2p = com.example.data.NexusP2PManager.getInstance(getApplication())
+                p2p.sendRemoteCommand(targetIp, "REQUEST_SCREEN_SHARE")
+            }
+            firestoreRepository.logAuditAction(
+                action = "REMOTE_SCREEN_VIEW_REQUESTED",
+                initiatorRole = "ADMIN",
+                targetDeviceId = targetDeviceId,
+                details = "Admin initialized remote screen monitoring of target device."
+            )
+            com.example.data.LiveAlertManager.postAlert(
+                title = "Remote Stream Connected",
+                message = "Live screen feed connected to target device ($targetDeviceId)",
+                type = com.example.data.LiveAlertType.SUCCESS
+            )
+        }
+    }
+
+    fun stopRemoteViewing(targetDeviceId: String) {
+        _isSharingActive.value = false
+        viewModelScope.launch {
+            firestoreRepository.logAuditAction(
+                action = "REMOTE_SCREEN_VIEW_STOPPED",
+                initiatorRole = "ADMIN",
+                targetDeviceId = targetDeviceId,
+                details = "Admin disconnected remote screen viewer session."
+            )
+        }
+    }
+
+    fun startManagedScreenCapture(adminDeviceId: String) {
         val app = getApplication<Application>()
         val intent = Intent(app, ScreenCaptureService::class.java).apply {
             action = ScreenCaptureService.ACTION_START
@@ -43,7 +77,7 @@ class ScreenShareViewModel(application: Application) : AndroidViewModel(applicat
         viewModelScope.launch {
             val session = firestoreRepository.sendSdpOffer(
                 pairingId = "pair_active",
-                managedDeviceId = managedDeviceId,
+                managedDeviceId = "local_managed",
                 adminDeviceId = adminDeviceId,
                 sdpOffer = "v=0\r\no=- 482910381029 2 IN IP4 127.0.0.1\r\ns=NexusWebRTCStream\r\nt=0 0\r\nm=video 9 UDP/TLS/RTP/SAVPF 96"
             )
@@ -52,7 +86,7 @@ class ScreenShareViewModel(application: Application) : AndroidViewModel(applicat
         }
     }
 
-    fun stopScreenShareSession() {
+    fun stopManagedScreenCapture() {
         val app = getApplication<Application>()
         val intent = Intent(app, ScreenCaptureService::class.java).apply {
             action = ScreenCaptureService.ACTION_STOP
@@ -67,6 +101,14 @@ class ScreenShareViewModel(application: Application) : AndroidViewModel(applicat
                 firestoreRepository.logAuditAction("SCREEN_SHARE_STOPPED", "MANAGED", session.adminDeviceId, "Screen sharing stream explicitly terminated.")
             }
         }
+    }
+
+    fun startScreenShareSession(managedDeviceId: String, adminDeviceId: String) {
+        requestRemoteScreenStream(managedDeviceId)
+    }
+
+    fun stopScreenShareSession() {
+        _isSharingActive.value = false
     }
 
     fun setResolution(res: String) {

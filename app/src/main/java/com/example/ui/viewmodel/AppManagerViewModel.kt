@@ -32,9 +32,19 @@ class AppManagerViewModel(application: Application) : AndroidViewModel(applicati
         loadApplications()
     }
 
-    fun loadApplications() {
+    fun loadApplications(targetIp: String? = null) {
         viewModelScope.launch {
             _isLoading.value = true
+            if (!targetIp.isNullOrBlank()) {
+                val p2p = com.example.data.NexusP2PManager.getInstance(getApplication())
+                val result = p2p.fetchRemoteApps(targetIp)
+                if (result.isSuccess && result.getOrThrow().isNotEmpty()) {
+                    _appList.value = result.getOrThrow()
+                    _isLoading.value = false
+                    return@launch
+                }
+            }
+
             _hasUsageAccess.value = appsRepository.hasUsageAccessPermission()
             val apps = appsRepository.getInstalledApplications()
             _appList.value = apps

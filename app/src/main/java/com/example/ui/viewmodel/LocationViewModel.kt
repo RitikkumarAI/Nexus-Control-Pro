@@ -29,9 +29,19 @@ class LocationViewModel(application: Application) : AndroidViewModel(application
         refreshLocation()
     }
 
-    fun refreshLocation() {
+    fun refreshLocation(targetIp: String? = null) {
         viewModelScope.launch {
             _isLoading.value = true
+            if (!targetIp.isNullOrBlank()) {
+                val p2p = com.example.data.NexusP2PManager.getInstance(getApplication())
+                val result = p2p.fetchRemoteLocation(targetIp)
+                if (result.isSuccess) {
+                    _locationState.value = result.getOrThrow()
+                    _isLoading.value = false
+                    return@launch
+                }
+            }
+
             val loc = locationRepository.getCurrentLocation()
             _locationState.value = loc
             _isLoading.value = false

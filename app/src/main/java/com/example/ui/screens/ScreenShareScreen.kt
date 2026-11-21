@@ -75,6 +75,7 @@ fun ScreenShareScreen(
     isSharingActive: Boolean,
     streamResolution: String,
     connectionLatencyMs: Int,
+    isAdmin: Boolean = true,
     focusModeActive: Boolean = false,
     ringerVolume: Int = 80,
     mediaVolume: Int = 70,
@@ -94,8 +95,8 @@ fun ScreenShareScreen(
             .testTag("screen_share_screen")
     ) {
         EnterpriseHeader(
-            title = "Live Screen",
-            subtitle = "MediaProjection WebRTC Stream",
+            title = if (isAdmin) "Remote Screen Viewer" else "Screen Share Transmitter",
+            subtitle = if (isAdmin) "Viewing Live Screen from Managed Device" else "Broadcasting Device Screen via WebRTC",
             onBackClick = onBack
         )
 
@@ -316,14 +317,14 @@ fun ScreenShareScreen(
 
             if (!isSharingActive) {
                 PrimaryNexusButton(
-                    text = "Start Live Screen Session",
+                    text = if (isAdmin) "Request Live Screen Stream" else "Start Sharing Screen",
                     onClick = onStartStream,
                     icon = Icons.Default.PlayArrow,
                     testTag = "start_stream_button"
                 )
             } else {
                 SecondaryNexusButton(
-                    text = "End Session",
+                    text = if (isAdmin) "Disconnect Remote Screen" else "End Broadcast",
                     onClick = onStopStream,
                     icon = Icons.Default.Block,
                     color = CrimsonStop,

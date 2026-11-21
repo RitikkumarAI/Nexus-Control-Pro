@@ -3,9 +3,13 @@ package com.example.ui.viewmodel
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.data.LiveAlertManager
+import com.example.data.LiveAlertType
+import com.example.data.NexusP2PManager
 import com.example.data.PairingRepository
 import com.example.data.PreferencesManager
 import com.example.model.DevicePairing
+import com.example.model.NexusDevice
 import com.example.model.PairingStatus
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -73,6 +77,112 @@ class PairingViewModel(application: Application) : AndroidViewModel(application)
                 prefsManager.savePairedDeviceId(pairing.managedDeviceId)
             } else {
                 _pairingMessage.value = "Invalid or expired pairing code. Please try again."
+            }
+        }
+    }
+
+    fun pairFromScannedQr(
+        qrData: String,
+        adminDeviceId: String,
+        adminDeviceName: String,
+        onSuccess: (NexusDevice) -> Unit = {}
+    ) {
+        viewModelScope.launch {
+            _isLoading.value = true
+            _pairingMessage.value = "Connecting via QR code..."
+
+            try {
+                var targetIp: String? = null
+                var targetPort: Int = NexusP2PManager.DEFAULT_PORT
+                var targetId: String = "managed_device"
+                var targetName: String = "Managed Device"
+                var pairingCode: String = ""
+
+                if (qrData.startsWith("{")) {
+                    val json = org.json.JSONObject(qrData)
+                    targetIp = if (json.has("ip")) json.getString("ip") else null
+                    targetPort = json.optInt("port", NexusP2PManager.DEFAULT_PORT)
+                    targetId = json.optString("deviceId", "managed_device")
+                    targetName = json.optString("deviceName", "Managed Device")
+                    pairingCode = json.optString("code", "")
+                } else if (qrData.startsWith("NEXUS_P2P:")) {
+                    val parts = qrData.split(":")
+                    if (parts.size >= 4) {
+                        targetIp = parts[1]
+                        targetPort = parts[2].toIntOrNull() ?: NexusP2PManager.DEFAULT_PORT
+                        targetId = parts[3]
+                        if (parts.size >= 5) targetName = parts[4]
+                        if (parts.size >= 6) pairingCode = parts[5]
+                    }
+                } else if (qrData.startsWith("NEXUS_PAIR:")) {
+                    val parts = qrData.split(":")
+                    if (parts.size >= 2) pairingCode = parts[1]
+                    if (parts.size >= 3) targetId = parts[2]
+                }
+
+                if (!targetIp.isNullOrBlank()) {
+                    val p2p = NexusP2PManager.getInstance(getApplication())
+                    val p2pResult = p2p.pairWithManagedHost(targetIp, targetPort, adminDeviceId, adminDeviceName)
+
+                    if (p2pResult.isSuccess) {
+                        val device = p2pResult.getOrThrow()
+                        prefsManager.savePairedDeviceId(device.deviceId)
+                        _pairingState.value = DevicePairing(
+                            pairingId = "p2p_" + device.deviceId,
+                            managedDeviceId = device.deviceId,
+                            managedDeviceName = device.deviceName,
+                            adminDeviceId = adminDeviceId,
+                            adminDeviceName = adminDeviceName,
+                            status = PairingStatus.PAIRED.name,
+                            managedIp = targetIp,
+                            managedPort = targetPort
+                        )
+                        _pairingMessage.value = "Connected directly with ${device.deviceName} ($targetIp)!"
+                        LiveAlertManager.postAlert(
+                            title = "Pairing Successful!",
+                            message = "Connected to ${device.deviceName} via QR scan",
+                            type = LiveAlertType.SUCCESS
+                        )
+                        _isLoading.value = false
+                        onSuccess(device)
+                        return@launch
+                    }
+                }
+
+                // Fallback to PIN pairing if code was provided
+                if (pairingCode.length == 6) {
+                    val pairing = pairingRepository.submitPairingCodeFromAdmin(adminDeviceId, adminDeviceName, pairingCode)
+                    if (pairing != null) {
+                        prefsManager.savePairedDeviceId(pairing.managedDeviceId)
+                        _pairingState.value = pairing
+                        _pairingMessage.value = "Pairing request verified for ${pairing.managedDeviceName}!"
+                        LiveAlertManager.postAlert(
+                            title = "Pairing Successful!",
+                            message = "Paired with ${pairing.managedDeviceName}",
+                            type = LiveAlertType.SUCCESS
+                        )
+                        _isLoading.value = false
+                        onSuccess(
+                            NexusDevice(
+                                deviceId = pairing.managedDeviceId,
+                                deviceName = pairing.managedDeviceName,
+                                isOnline = true
+                            )
+                        )
+                        return@launch
+                    }
+                }
+
+                _pairingMessage.value = "Could not reach device from QR data. Ensure both phones are on same Wi-Fi/Hotspot."
+                LiveAlertManager.postAlert(
+                    title = "Connection Failed",
+                    message = "Could not reach target device. Ensure both phones are on the same Wi-Fi or Hotspot.",
+                    type = LiveAlertType.ERROR
+                )
+            } catch (e: Exception) {
+                _pairingMessage.value = "Error parsing QR code: ${e.message}"
+            } finally {
+                _isLoading.value = false
             }
         }
     }

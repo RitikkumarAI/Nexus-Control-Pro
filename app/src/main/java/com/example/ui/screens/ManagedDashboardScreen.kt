@@ -42,13 +42,16 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.data.NexusP2PManager
 import com.example.model.NexusDevice
 import com.example.ui.components.EnterpriseHeader
 import com.example.ui.components.HourlyBatteryGaugeCard
 import com.example.ui.components.MetricCard
 import com.example.ui.components.PrimaryNexusButton
+import com.example.ui.components.QRCodeView
 import com.example.ui.components.SecondaryNexusButton
 import com.example.ui.theme.CrimsonStop
 import com.example.ui.theme.EmeraldOnline
@@ -149,12 +152,96 @@ fun ManagedDashboardScreen(
             Spacer(modifier = Modifier.height(16.dp))
 
             if (pairedAdminId == null) {
-                PrimaryNexusButton(
-                    text = "Pair Phone A with Phone B Admin",
-                    onClick = onNavigateToPairing,
-                    icon = Icons.Default.VpnKey,
-                    testTag = "managed_pair_button"
-                )
+                val context = androidx.compose.ui.platform.LocalContext.current
+                val p2p = remember { NexusP2PManager.getInstance(context) }
+                val localIp = remember { p2p.getLocalIpAddress() }
+
+                androidx.compose.runtime.LaunchedEffect(Unit) {
+                    p2p.startManagedServer(NexusP2PManager.DEFAULT_PORT)
+                }
+
+                val qrPayload = remember(device, localIp) {
+                    org.json.JSONObject().apply {
+                        put("protocol", "NEXUS_MDM_V1")
+                        put("deviceId", device.deviceId.ifBlank { "managed_node" })
+                        put("deviceName", device.deviceName)
+                        put("model", device.model)
+                        put("manufacturer", device.manufacturer)
+                        put("ip", localIp)
+                        put("port", NexusP2PManager.DEFAULT_PORT)
+                        put("code", "749268")
+                    }.toString()
+                }
+
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(20.dp))
+                        .background(MaterialTheme.colorScheme.surface)
+                        .border(1.5.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.5f), RoundedCornerShape(20.dp))
+                        .padding(16.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text(
+                            text = "ADMIN PAIRING QR CODE",
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.primary,
+                            letterSpacing = 1.sp
+                        )
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            text = "Scan with Admin Phone (+ button) to connect directly",
+                            fontSize = 11.sp,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            textAlign = TextAlign.Center
+                        )
+
+                        Spacer(modifier = Modifier.height(14.dp))
+
+                        QRCodeView(
+                            qrCodeContent = qrPayload,
+                            sizeDp = 200
+                        )
+
+                        Spacer(modifier = Modifier.height(12.dp))
+
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.12f))
+                                    .padding(horizontal = 10.dp, vertical = 6.dp)
+                            ) {
+                                Text(
+                                    text = "IP: $localIp:8899",
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.primary
+                                )
+                            }
+
+                            Box(
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .background(MaterialTheme.colorScheme.surfaceVariant)
+                                    .padding(horizontal = 10.dp, vertical = 6.dp)
+                            ) {
+                                Text(
+                                    text = "PIN: 749268",
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
+                    }
+                }
+
                 Spacer(modifier = Modifier.height(16.dp))
             }
 

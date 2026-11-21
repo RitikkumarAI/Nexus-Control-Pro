@@ -10,6 +10,7 @@ import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -34,6 +35,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.BatteryChargingFull
 import androidx.compose.material.icons.filled.BatteryStd
+import androidx.compose.material.icons.filled.CameraAlt
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.Close
@@ -93,7 +95,8 @@ import java.util.Locale
 fun ManagedDevicesScreen(
     viewModel: ManagedDevicesViewModel,
     onBack: () -> Unit,
-    onNavigateToPairing: () -> Unit
+    onNavigateToPairing: () -> Unit,
+    onScanQrPair: (String) -> Unit = {}
 ) {
     val devices by viewModel.managedDevices.collectAsStateWithLifecycle()
     val priorityDevices by viewModel.highPriorityDevices.collectAsStateWithLifecycle()
@@ -104,6 +107,8 @@ fun ManagedDevicesScreen(
     val statusBanner by viewModel.statusBanner.collectAsStateWithLifecycle()
 
     var pendingBulkConfirmAction by remember { mutableStateOf<String?>(null) } // "LOCK" or "REBOOT"
+    var deviceToRemove by remember { mutableStateOf<NexusDevice?>(null) }
+    var showQrScanner by remember { mutableStateOf(false) }
 
     val filteredDevices = remember(devices, searchQuery, filterMode) {
         val q = searchQuery.trim().lowercase(Locale.getDefault())
@@ -192,6 +197,54 @@ fun ManagedDevicesScreen(
                 ) {
                     Text("Cancel")
                 }
+            }
+        )
+    }
+
+    if (deviceToRemove != null) {
+        val target = deviceToRemove!!
+        AlertDialog(
+            onDismissRequest = { deviceToRemove = null },
+            icon = {
+                Icon(
+                    imageVector = Icons.Default.Close,
+                    contentDescription = null,
+                    tint = CrimsonStop
+                )
+            },
+            title = {
+                Text(text = "Remove Device", fontWeight = FontWeight.Bold)
+            },
+            text = {
+                Text(
+                    text = "Are you sure you want to remove and unpair '${target.deviceName}' (${target.model}) from your managed fleet?"
+                )
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        viewModel.removeDevice(target.deviceId)
+                        deviceToRemove = null
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = CrimsonStop)
+                ) {
+                    Text("Remove / Delete", color = Color.White)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { deviceToRemove = null }) {
+                    Text("Cancel")
+                }
+            }
+        )
+    }
+
+    if (showQrScanner) {
+        com.example.ui.components.QRScannerDialog(
+            onDismiss = { showQrScanner = false },
+            onQrScanned = { scannedCode ->
+                showQrScanner = false
+                onScanQrPair(scannedCode)
             }
         )
     }
@@ -442,8 +495,32 @@ fun ManagedDevicesScreen(
                         device = device,
                         isSelected = device.deviceId in selectedIds,
                         onToggleSelect = { viewModel.toggleDeviceSelection(device.deviceId) },
-                        onTogglePriority = { viewModel.toggleHighPriority(device.deviceId) }
+                        onTogglePriority = { viewModel.toggleHighPriority(device.deviceId) },
+                        onLongClick = { deviceToRemove = device }
                     )
+                }
+
+                item {
+                    Button(
+                        onClick = { showQrScanner = true },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .defaultMinSize(minHeight = 48.dp)
+                            .testTag("scan_qr_add_device_btn"),
+                        shape = RoundedCornerShape(14.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.CameraAlt,
+                            contentDescription = null,
+                            modifier = Modifier.size(18.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = "Scan QR Code to Add Device",
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
                 }
 
                 // Pair Another Device CTA
@@ -657,12 +734,14 @@ private fun BulkActionToolbar(
     }
 }
 
+@OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
 @Composable
 private fun ManagedDeviceSelectableCard(
     device: NexusDevice,
     isSelected: Boolean,
     onToggleSelect: () -> Unit,
-    onTogglePriority: () -> Unit
+    onTogglePriority: () -> Unit,
+    onLongClick: () -> Unit
 ) {
     val borderColor = when {
         isSelected -> MaterialTheme.colorScheme.primary
@@ -688,7 +767,10 @@ private fun ManagedDeviceSelectableCard(
             .clip(RoundedCornerShape(16.dp))
             .background(containerBg)
             .border(if (isSelected) 1.5.dp else 1.dp, borderColor, RoundedCornerShape(16.dp))
-            .clickable { onToggleSelect() }
+            .combinedClickable(
+                onClick = { onToggleSelect() },
+                onLongClick = { onLongClick() }
+            )
             .padding(12.dp)
             .testTag("managed_device_card_${device.deviceId}")
     ) {
