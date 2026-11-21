@@ -41,6 +41,7 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import kotlinx.coroutines.launch
 import com.example.model.AuditLogEntry
 import com.example.ui.components.EnterpriseHeader
 import com.example.ui.components.SecondaryNexusButton
@@ -161,7 +162,29 @@ fun SecuritySettingsScreen(
             SettingsOptionRow(title = "Alerts & Notifications", subtitle = "Session disconnect notifications", icon = Icons.Default.Notifications)
             SettingsOptionRow(title = "Data & Storage", subtitle = "Logs & cache cleanup", icon = Icons.Default.Storage)
             SettingsOptionRow(title = "Backup & Export", subtitle = "Export session audit logs", icon = Icons.Default.CloudDownload)
-            SettingsOptionRow(title = "About", subtitle = "NEXUS CONTROL PRO v1.0.0", icon = Icons.Default.Info)
+
+            val ctx = androidx.compose.ui.platform.LocalContext.current
+            val coroutineScope = androidx.compose.runtime.rememberCoroutineScope()
+            SettingsOptionRow(
+                title = "Check for Updates (OTA)",
+                subtitle = "Check GitHub for new updates • Current: v${com.example.BuildConfig.VERSION_NAME}",
+                icon = Icons.Default.CloudDownload,
+                onClick = {
+                    coroutineScope.launch {
+                        val manager = com.example.data.AppUpdateManager.getInstance(ctx)
+                        val update = manager.checkForUpdates()
+                        if (update == null) {
+                            com.example.data.LiveAlertManager.postAlert(
+                                title = "App Up-to-Date",
+                                message = "Nexus Control Pro is up-to-date (v${com.example.BuildConfig.VERSION_NAME}).",
+                                type = com.example.data.LiveAlertType.SUCCESS
+                            )
+                        }
+                    }
+                }
+            )
+
+            SettingsOptionRow(title = "About", subtitle = "NEXUS CONTROL PRO v${com.example.BuildConfig.VERSION_NAME} (Build ${com.example.BuildConfig.VERSION_CODE})", icon = Icons.Default.Info)
 
             Spacer(modifier = Modifier.height(8.dp))
 
@@ -209,14 +232,19 @@ private fun ThemeSegmentButton(text: String, active: Boolean, onClick: () -> Uni
 }
 
 @Composable
-private fun SettingsOptionRow(title: String, subtitle: String, icon: ImageVector) {
+private fun SettingsOptionRow(
+    title: String,
+    subtitle: String,
+    icon: ImageVector,
+    onClick: () -> Unit = {}
+) {
     Box(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(14.dp))
             .background(MaterialTheme.colorScheme.surface)
             .border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(14.dp))
-            .clickable { /* Option click */ }
+            .clickable { onClick() }
             .padding(14.dp)
     ) {
         Row(

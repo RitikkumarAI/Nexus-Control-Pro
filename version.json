@@ -1,0 +1,7 @@
+{
+  "versionCode": 2,
+  "versionName": "1.1",
+  "releaseNotes": "• Live In-App Auto-Update system\n• Instant Camera QR code pairing on + button\n• Direct Wi-Fi P2P device synchronization\n• Long-press device removal and unpairing\n• Strict Admin & Managed client role separation",
+  "apkUrl": "https://raw.githubusercontent.com/RitikkumarAI/Nexus-Control-Pro/main/NexusControlPro.apk",
+  "isMandatory": false
+}

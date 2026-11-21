@@ -10,11 +10,15 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.data.AppUpdateManager
+import com.example.ui.components.AppUpdateDialog
 import com.example.ui.components.LiveAlertBanner
 import com.example.ui.navigation.NexusNavGraph
 import com.example.ui.theme.NexusThemeProvider
@@ -28,6 +32,11 @@ class MainActivity : ComponentActivity() {
         setContent {
             val mainViewModel: MainViewModel = viewModel()
             val themeModeStr by mainViewModel.themeModeState.collectAsState()
+            val updateManager = remember { AppUpdateManager.getInstance(applicationContext) }
+
+            LaunchedEffect(Unit) {
+                updateManager.checkForUpdatesSilently()
+            }
 
             val currentThemeMode = when (themeModeStr.uppercase()) {
                 "LIGHT" -> ThemeMode.LIGHT
@@ -51,6 +60,7 @@ class MainActivity : ComponentActivity() {
                     Box(modifier = Modifier.fillMaxSize()) {
                         NexusNavGraph(mainViewModel = mainViewModel)
                         LiveAlertBanner(modifier = Modifier.align(Alignment.TopCenter))
+                        AppUpdateDialog(updateManager = updateManager)
                     }
                 }
             }
