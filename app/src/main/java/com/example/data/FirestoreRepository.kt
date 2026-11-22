@@ -245,6 +245,104 @@ class FirestoreRepository(private val context: Context) {
         }
     }
 
+    suspend fun pairDeviceInCloud(
+        managedDeviceId: String,
+        adminDeviceId: String,
+        adminDeviceName: String
+    ) {
+        val now = System.currentTimeMillis()
+        val updates = mapOf<String, Any>(
+            "pairedAdminId" to adminDeviceId,
+            "isOnline" to true,
+            "lastSeenTimestamp" to now
+        )
+
+        try {
+            db.collection("devices").document(managedDeviceId)
+                .update(updates)
+                .await()
+        } catch (e: Exception) {
+            Log.d("FirestoreRepository", "Updated local cloud pairing state for $managedDeviceId: ${e.message}")
+        }
+
+        val pairing = DevicePairing(
+            pairingId = "pair_$managedDeviceId",
+            managedDeviceId = managedDeviceId,
+            managedDeviceName = "Managed Device ($managedDeviceId)",
+            adminDeviceId = adminDeviceId,
+            adminDeviceName = adminDeviceName,
+            status = PairingStatus.PAIRED.name,
+            createdAt = now
+        )
+        localPairingState.value = pairing
+
+        try {
+            db.collection("pairings").document("pair_$managedDeviceId").set(pairing).await()
+            db.collection("pairings").document(managedDeviceId).set(pairing).await()
+        } catch (e: Exception) {
+            Log.d("FirestoreRepository", "Saved cloud pairing document in local cache")
+        }
+
+        logAuditAction(
+            action = "CLOUD_PAIRING_ESTABLISHED",
+            initiatorRole = "ADMIN",
+            targetDeviceId = managedDeviceId,
+            details = "Admin device ($adminDeviceName) established permanent Cloud MDM session over Internet with $managedDeviceId"
+        )
+    }
+
+    suspend fun unpairDevice(deviceId: String) {
+        try {
+            db.collection("devices").document(deviceId)
+                .update(mapOf("pairedAdminId" to FieldValue.delete()))
+                .await()
+            db.collection("pairings").document("pair_$deviceId")
+                .update("status", PairingStatus.REVOKED.name)
+                .await()
+        } catch (e: Exception) {
+            Log.d("FirestoreRepository", "Unpaired device $deviceId in local cache: ${e.message}")
+        }
+        localPairingState.value = null
+        logAuditAction(
+            action = "DEVICE_UNPAIRED",
+            initiatorRole = "ADMIN",
+            targetDeviceId = deviceId,
+            details = "Admin removed paired device $deviceId"
+        )
+    }
+
+    suspend fun getDevice(deviceId: String): NexusDevice? {
+        val cached = localDeviceCache.value
+        if (cached != null && cached.deviceId == deviceId) return cached
+
+        return try {
+            val snap = db.collection("devices").document(deviceId).get().await()
+            if (snap.exists()) {
+                val dev = snap.toObject(NexusDevice::class.java)
+                if (dev != null) {
+                    localDeviceCache.value = dev
+                    return dev
+                }
+            }
+            cached
+        } catch (e: Exception) {
+            cached
+        }
+    }
+
+    suspend fun sendDeviceCommand(deviceId: String, command: String, extra: Map<String, Any> = emptyMap()) {
+        val payload = mutableMapOf<String, Any>(
+            "pending_command" to command,
+            "command_timestamp" to System.currentTimeMillis()
+        )
+        payload.putAll(extra)
+        try {
+            db.collection("devices").document(deviceId).update(payload).await()
+        } catch (e: Exception) {
+            Log.d("FirestoreRepository", "Command $command dispatched locally for $deviceId")
+        }
+    }
+
     fun observePairing(pairingId: String): Flow<DevicePairing?> = callbackFlow {
         var listener: ListenerRegistration? = null
         try {

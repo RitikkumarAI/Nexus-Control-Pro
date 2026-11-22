@@ -14,6 +14,7 @@ import kotlinx.coroutines.launch
 
 class LocationViewModel(application: Application) : AndroidViewModel(application) {
 
+    private val firestoreRepository = com.example.data.FirestoreRepository(application)
     private val locationRepository = LocationRepository(application)
 
     private val _locationState = MutableStateFlow<DeviceLocation?>(null)
@@ -29,9 +30,10 @@ class LocationViewModel(application: Application) : AndroidViewModel(application
         refreshLocation()
     }
 
-    fun refreshLocation(targetIp: String? = null) {
+    fun refreshLocation(targetDeviceId: String? = null, targetIp: String? = null) {
         viewModelScope.launch {
             _isLoading.value = true
+            // 1. Try Local LAN P2P
             if (!targetIp.isNullOrBlank()) {
                 val p2p = com.example.data.NexusP2PManager.getInstance(getApplication())
                 val result = p2p.fetchRemoteLocation(targetIp)
@@ -42,6 +44,23 @@ class LocationViewModel(application: Application) : AndroidViewModel(application
                 }
             }
 
+            // 2. Fetch remote device's cloud GPS from Firestore
+            if (!targetDeviceId.isNullOrBlank()) {
+                val dev = firestoreRepository.getDevice(targetDeviceId)
+                if (dev != null && dev.lastLatitude != null && dev.lastLongitude != null) {
+                    _locationState.value = DeviceLocation(
+                        latitude = dev.lastLatitude,
+                        longitude = dev.lastLongitude,
+                        accuracyMeters = 8.0f,
+                        timestamp = dev.lastLocationTime ?: System.currentTimeMillis(),
+                        addressLabel = dev.lastLocationAddress ?: "${dev.deviceName} • Real-time GPS Location"
+                    )
+                    _isLoading.value = false
+                    return@launch
+                }
+            }
+
+            // 3. Fallback to local GPS
             val loc = locationRepository.getCurrentLocation()
             _locationState.value = loc
             _isLoading.value = false

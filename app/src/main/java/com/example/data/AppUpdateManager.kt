@@ -67,15 +67,21 @@ class AppUpdateManager private constructor(private val context: Context) {
     private val _isChecking = MutableStateFlow(false)
     val isChecking: StateFlow<Boolean> = _isChecking.asStateFlow()
 
+    private var dismissedVersionCode: Int = 0
+
     fun checkForUpdatesSilently() {
         scope.launch {
-            checkForUpdates()
+            val update = checkForUpdates()
+            if (update != null && update.versionCode <= dismissedVersionCode) {
+                _updateInfo.value = null
+            }
         }
     }
 
     suspend fun checkForUpdates(): AppUpdateInfo? = withContext(Dispatchers.IO) {
         _isChecking.value = true
         try {
+            val currentCode = BuildConfig.VERSION_CODE
             // Check version.json from raw GitHub
             val timestamp = System.currentTimeMillis()
             val url = URL("$VERSION_JSON_URL?t=$timestamp")
@@ -95,7 +101,6 @@ class AppUpdateManager private constructor(private val context: Context) {
                 val notes = json.optString("releaseNotes", "Bug fixes and performance improvements.")
                 val apkUrl = json.optString("apkUrl", "")
 
-                val currentCode = BuildConfig.VERSION_CODE
                 Log.d(TAG, "Current versionCode: $currentCode, Remote versionCode: $remoteCode")
 
                 if (remoteCode > currentCode && apkUrl.isNotBlank()) {
@@ -106,9 +111,15 @@ class AppUpdateManager private constructor(private val context: Context) {
                         apkUrl = apkUrl,
                         isMandatory = json.optBoolean("isMandatory", false)
                     )
-                    _updateInfo.value = info
+                    if (remoteCode > dismissedVersionCode) {
+                        _updateInfo.value = info
+                    }
                     _isChecking.value = false
                     return@withContext info
+                } else {
+                    _updateInfo.value = null
+                    _isChecking.value = false
+                    return@withContext null
                 }
             }
 
@@ -252,6 +263,10 @@ class AppUpdateManager private constructor(private val context: Context) {
     }
 
     fun dismissUpdate() {
+        val current = _updateInfo.value
+        if (current != null) {
+            dismissedVersionCode = current.versionCode
+        }
         _updateInfo.value = null
         _downloadState.value = UpdateDownloadState.Idle
     }

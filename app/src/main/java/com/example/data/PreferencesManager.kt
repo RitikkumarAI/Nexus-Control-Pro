@@ -21,6 +21,32 @@ class PreferencesManager(private val context: Context) {
         private val KEY_THEME_MODE = stringPreferencesKey("theme_mode")
     }
 
+    fun getStableDeviceId(): String {
+        val sp = context.getSharedPreferences("nexus_stable_identity", Context.MODE_PRIVATE)
+        var id = sp.getString("stable_device_id", null)
+        if (id.isNullOrBlank()) {
+            val androidId = try {
+                android.provider.Settings.Secure.getString(
+                    context.contentResolver,
+                    android.provider.Settings.Secure.ANDROID_ID
+                )
+            } catch (e: Exception) { null }
+
+            id = if (!androidId.isNullOrBlank() && androidId != "9774d56d682e549c") {
+                "device_${androidId}"
+            } else {
+                "device_${UUID.randomUUID().toString().replace("-", "").take(12)}"
+            }
+            sp.edit().putString("stable_device_id", id).apply()
+        }
+        return id
+    }
+
+    fun getPairedDeviceIdDirect(): String? {
+        val sp = context.getSharedPreferences("nexus_stable_identity", Context.MODE_PRIVATE)
+        return sp.getString("paired_device_id", null)
+    }
+
     val themeModeFlow: Flow<String> = context.dataStore.data.map { prefs ->
         prefs[KEY_THEME_MODE] ?: "DARK"
     }
@@ -31,7 +57,7 @@ class PreferencesManager(private val context: Context) {
     }
 
     val deviceIdFlow: Flow<String> = context.dataStore.data.map { prefs ->
-        prefs[KEY_DEVICE_ID] ?: UUID.randomUUID().toString()
+        prefs[KEY_DEVICE_ID] ?: getStableDeviceId()
     }
 
     val deviceNameFlow: Flow<String> = context.dataStore.data.map { prefs ->
@@ -39,7 +65,7 @@ class PreferencesManager(private val context: Context) {
     }
 
     val pairedDeviceIdFlow: Flow<String?> = context.dataStore.data.map { prefs ->
-        prefs[KEY_PAIRED_DEVICE_ID]
+        prefs[KEY_PAIRED_DEVICE_ID] ?: getPairedDeviceIdDirect()
     }
 
     suspend fun saveThemeMode(mode: String) {
@@ -55,6 +81,8 @@ class PreferencesManager(private val context: Context) {
     }
 
     suspend fun saveDeviceId(deviceId: String) {
+        val sp = context.getSharedPreferences("nexus_stable_identity", Context.MODE_PRIVATE)
+        sp.edit().putString("stable_device_id", deviceId).apply()
         context.dataStore.edit { prefs ->
             prefs[KEY_DEVICE_ID] = deviceId
         }
@@ -67,6 +95,12 @@ class PreferencesManager(private val context: Context) {
     }
 
     suspend fun savePairedDeviceId(deviceId: String?) {
+        val sp = context.getSharedPreferences("nexus_stable_identity", Context.MODE_PRIVATE)
+        if (deviceId == null) {
+            sp.edit().remove("paired_device_id").apply()
+        } else {
+            sp.edit().putString("paired_device_id", deviceId).apply()
+        }
         context.dataStore.edit { prefs ->
             if (deviceId == null) {
                 prefs.remove(KEY_PAIRED_DEVICE_ID)

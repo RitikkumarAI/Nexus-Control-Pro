@@ -27,7 +27,7 @@ class CommLogViewModel(application: Application) : AndroidViewModel(application)
         loadCallLogs()
     }
 
-    fun loadCallLogs() {
+    fun loadCallLogs(targetDeviceId: String? = null) {
         viewModelScope.launch {
             _isLoading.value = true
             val logs = callLogRepository.getCallLogs()

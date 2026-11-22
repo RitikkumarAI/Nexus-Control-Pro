@@ -217,6 +217,8 @@ fun PairingScreen(
                             put("protocol", "NEXUS_MDM_V1")
                             put("deviceId", currentDeviceId)
                             put("deviceName", currentDeviceName)
+                            put("model", android.os.Build.MODEL)
+                            put("manufacturer", android.os.Build.MANUFACTURER)
                             put("ip", localIp)
                             put("port", com.example.data.NexusP2PManager.DEFAULT_PORT)
                             put("code", currentCode)

@@ -34,27 +34,46 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    private val _currentDeviceId = MutableStateFlow(UUID.randomUUID().toString())
+    private val _currentDeviceId = MutableStateFlow(prefsManager.getStableDeviceId())
     val currentDeviceId: StateFlow<String> = _currentDeviceId.asStateFlow()
 
     private val _currentDeviceName = MutableStateFlow("${android.os.Build.MANUFACTURER} ${android.os.Build.MODEL}")
     val currentDeviceName: StateFlow<String> = _currentDeviceName.asStateFlow()
 
     val pairedDeviceIdState: StateFlow<String?> = prefsManager.pairedDeviceIdFlow
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), prefsManager.getPairedDeviceIdDirect())
 
     private val _currentDeviceTelemetry = MutableStateFlow<NexusDevice?>(null)
     val currentDeviceTelemetry: StateFlow<NexusDevice?> = _currentDeviceTelemetry.asStateFlow()
 
     init {
+        val initialId = prefsManager.getStableDeviceId()
+        _currentDeviceId.value = initialId
+        updateLocalTelemetry()
+
         viewModelScope.launch {
             prefsManager.deviceIdFlow.collect { id ->
                 _currentDeviceId.value = id
+                updateLocalTelemetry()
             }
         }
         viewModelScope.launch {
             prefsManager.deviceNameFlow.collect { name ->
                 _currentDeviceName.value = name
+                updateLocalTelemetry()
+            }
+        }
+        // Background listener on managed device for cloud pairing handshake
+        viewModelScope.launch {
+            roleState.collect { role ->
+                if (role == UserRole.MANAGED) {
+                    val myId = currentDeviceId.value
+                    firestoreRepository.observeDevice(myId).collect { dev ->
+                        if (dev?.pairedAdminId != null && dev.pairedAdminId.isNotBlank()) {
+                            prefsManager.savePairedDeviceId(dev.pairedAdminId)
+                        }
+                    }
+                }
             }
         }
     }

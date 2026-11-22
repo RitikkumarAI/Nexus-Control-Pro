@@ -388,7 +388,7 @@ fun AdminDashboardScreen(
                                     fontWeight = FontWeight.Bold
                                 )
                                 Text(
-                                    text = "📶 4G",
+                                    text = "📶 ${device.networkType.ifBlank { "Online" }}",
                                     fontSize = 11.sp,
                                     color = MaterialTheme.colorScheme.primary,
                                     fontWeight = FontWeight.Bold

@@ -32,7 +32,7 @@ class AppManagerViewModel(application: Application) : AndroidViewModel(applicati
         loadApplications()
     }
 
-    fun loadApplications(targetIp: String? = null) {
+    fun loadApplications(targetDeviceId: String? = null, targetIp: String? = null) {
         viewModelScope.launch {
             _isLoading.value = true
             if (!targetIp.isNullOrBlank()) {

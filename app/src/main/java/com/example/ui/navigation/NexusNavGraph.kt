@@ -193,6 +193,12 @@ fun NexusNavGraph(
             val storageReport by dashboardViewModel.storageReport.collectAsState()
             val isOptimizingStorage by dashboardViewModel.isOptimizingStorage.collectAsState()
 
+            LaunchedEffect(pairedDeviceId) {
+                if (!pairedDeviceId.isNullOrBlank()) {
+                    dashboardViewModel.observeRemoteDevice(pairedDeviceId!!)
+                }
+            }
+
             AdminDashboardScreen(
                 managedDevice = managedDevice,
                 pairedDeviceId = pairedDeviceId,
@@ -342,8 +348,8 @@ fun NexusNavGraph(
             val isLoading by appManagerViewModel.isLoading.collectAsState()
             val hasUsageAccess by appManagerViewModel.hasUsageAccess.collectAsState()
 
-            LaunchedEffect(managedDevice?.ipAddress) {
-                appManagerViewModel.loadApplications(managedDevice?.ipAddress)
+            LaunchedEffect(pairedDeviceId, managedDevice?.ipAddress) {
+                appManagerViewModel.loadApplications(pairedDeviceId, managedDevice?.ipAddress)
             }
 
             AppManagerScreen(
@@ -398,15 +404,15 @@ fun NexusNavGraph(
             val trackingActive by locationViewModel.isContinuousTrackingActive.collectAsState()
             val isLoading by locationViewModel.isLoading.collectAsState()
 
-            LaunchedEffect(managedDevice?.ipAddress) {
-                locationViewModel.refreshLocation(managedDevice?.ipAddress)
+            LaunchedEffect(pairedDeviceId, managedDevice?.ipAddress) {
+                locationViewModel.refreshLocation(pairedDeviceId, managedDevice?.ipAddress)
             }
 
             LocationScreen(
                 locationState = locationState,
                 isContinuousTrackingActive = trackingActive,
                 isLoading = isLoading,
-                onRefreshLocation = { locationViewModel.refreshLocation(managedDevice?.ipAddress) },
+                onRefreshLocation = { locationViewModel.refreshLocation(pairedDeviceId, managedDevice?.ipAddress) },
                 onToggleTracking = locationViewModel::toggleContinuousTracking,
                 onBack = { navController.popBackStack() }
             )
@@ -416,6 +422,10 @@ fun NexusNavGraph(
             val logs = commLogViewModel.getFilteredCallLogs()
             val filterType by commLogViewModel.filterType.collectAsState()
             val isLoading by commLogViewModel.isLoading.collectAsState()
+
+            LaunchedEffect(pairedDeviceId) {
+                commLogViewModel.loadCallLogs(pairedDeviceId)
+            }
 
             CommLogScreen(
                 callLogs = logs,

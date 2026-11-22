@@ -155,21 +155,32 @@ fun ManagedDashboardScreen(
                 val context = androidx.compose.ui.platform.LocalContext.current
                 val p2p = remember { NexusP2PManager.getInstance(context) }
                 val localIp = remember { p2p.getLocalIpAddress() }
+                val firestoreRepository = remember { com.example.data.FirestoreRepository(context) }
+                val pairingCode = remember { (100000..999999).random().toString() }
 
-                androidx.compose.runtime.LaunchedEffect(Unit) {
+                androidx.compose.runtime.LaunchedEffect(device.deviceId) {
                     p2p.startManagedServer(NexusP2PManager.DEFAULT_PORT)
+                    firestoreRepository.updateDeviceTelemetry(device)
+                    firestoreRepository.generatePairingCode(
+                        managedDeviceId = device.deviceId,
+                        managedDeviceName = device.deviceName,
+                        codeOverride = pairingCode,
+                        ipAddress = localIp
+                    )
                 }
 
-                val qrPayload = remember(device, localIp) {
+                val qrPayload = remember(device, localIp, pairingCode) {
                     org.json.JSONObject().apply {
                         put("protocol", "NEXUS_MDM_V1")
-                        put("deviceId", device.deviceId.ifBlank { "managed_node" })
+                        put("deviceId", device.deviceId)
                         put("deviceName", device.deviceName)
                         put("model", device.model)
                         put("manufacturer", device.manufacturer)
+                        put("batteryLevel", device.batteryLevel)
+                        put("networkType", device.networkType)
                         put("ip", localIp)
                         put("port", NexusP2PManager.DEFAULT_PORT)
-                        put("code", "749268")
+                        put("code", pairingCode)
                     }.toString()
                 }
 
@@ -192,7 +203,7 @@ fun ManagedDashboardScreen(
                         )
                         Spacer(modifier = Modifier.height(4.dp))
                         Text(
-                            text = "Scan with Admin Phone (+ button) to connect directly",
+                            text = "Scan with Admin Phone (+ button) from anywhere over Internet (4G/5G/Wi-Fi)",
                             fontSize = 11.sp,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             textAlign = TextAlign.Center
@@ -232,7 +243,7 @@ fun ManagedDashboardScreen(
                                     .padding(horizontal = 10.dp, vertical = 6.dp)
                             ) {
                                 Text(
-                                    text = "PIN: 749268",
+                                    text = "PIN: $pairingCode",
                                     fontSize = 12.sp,
                                     fontWeight = FontWeight.Bold,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
